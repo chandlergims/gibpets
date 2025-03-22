@@ -18,12 +18,9 @@ export const metadata: Metadata = {
   title: "BNBark",
   description: "Vote for your favorite egg to hatch into a dog memecoin on BNB Chain",
   icons: {
-    icon: [
-      {
-        url: '/logo.jpg',
-        type: 'image/jpeg',
-      },
-    ],
+    icon: '/logo.jpg',
+    apple: '/logo.jpg',
+    shortcut: '/logo.jpg',
   },
 };
 
