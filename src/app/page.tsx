@@ -3,19 +3,21 @@
 import { useState, useEffect, useRef } from 'react';
 import CountdownTimer from '@/components/CountdownTimer';
 import PresentBox from '@/components/PresentBox';
+import { useAuth } from '@/context/AuthContext';
 
-// Create an array of 20 egg boxes with zero initial votes
+// Create an array of 20 egg boxes with zero initial votes as fallback
 const initialEggs = Array.from({ length: 20 }, (_, i) => ({
   id: i + 1,
   votes: 0 // All votes start at 0
 }));
 
 export default function Home() {
+  const { address, isConnected, connectWallet } = useAuth();
   const [eggs, setEggs] = useState(initialEggs);
   const [userVoted, setUserVoted] = useState<number | null>(null);
   const [totalVotes, setTotalVotes] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info' | null}>({
     message: '',
     type: null
@@ -24,12 +26,12 @@ export default function Home() {
   // Ref for notification timeout
   const notificationTimeout = useRef<NodeJS.Timeout | null>(null);
   
-  // Set target time to 6:00 AM
+  // Set target time to 6:15 AM
   const now = new Date();
   const targetTime = new Date(now);
-  targetTime.setHours(6, 0, 0, 0);
+  targetTime.setHours(6, 15, 0, 0);
   
-  // If it's already past 6:00 AM, set target to tomorrow
+  // If it's already past 6:15 AM, set target to tomorrow
   if (now > targetTime) {
     targetTime.setDate(targetTime.getDate() + 1);
   }
@@ -52,15 +54,70 @@ export default function Home() {
     }, 5000);
   };
   
-  // Handle login
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-    showNotification('Successfully connected wallet!', 'success');
+  // Fetch all eggs and votes from the database
+  const fetchEggs = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/votes');
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch eggs');
+      }
+      
+      if (data.eggs && Array.isArray(data.eggs)) {
+        setEggs(data.eggs);
+        
+        // Calculate total votes
+        const total = data.eggs.reduce((sum: number, egg: any) => sum + (egg.votes || 0), 0);
+        setTotalVotes(total);
+      }
+    } catch (error) {
+      console.error('Error fetching eggs:', error);
+      showNotification('Failed to load eggs data', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  // Handle voting with simulated backend interaction
+  // Check if user has already voted
+  const checkUserVote = async () => {
+    if (!address) return;
+    
+    try {
+      // Call the API to check if the user has already voted
+      const response = await fetch('/api/votes/check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: address,
+        }),
+      });
+      
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      
+      if (data.hasVoted && data.eggId !== undefined) {
+        setUserVoted(Number(data.eggId));
+      } else {
+        // Fallback to localStorage if the API doesn't find a vote
+        const savedVote = localStorage.getItem(`userVoted_${address}`);
+        if (savedVote) {
+          const voteId = Number(savedVote);
+          setUserVoted(voteId);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user vote:', error);
+    }
+  };
+  
+  // Handle voting with real backend interaction
   const handleVote = async (id: number) => {
-    if (!isLoggedIn) {
+    if (!isConnected || !address) {
       showNotification('Please connect your wallet to vote', 'info');
       return;
     }
@@ -73,54 +130,61 @@ export default function Home() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call to backend
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Real API call to backend
+      const response = await fetch('/api/votes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          eggId: Number(id),
+          walletAddress: address,
+        }),
+      });
       
-      // Update state after successful "API call"
-      setEggs(prevEggs => 
-        prevEggs.map(egg => 
-          egg.id === id 
-            ? { ...egg, votes: egg.votes + 1 } 
-            : egg
-        )
-      );
+      const data = await response.json();
       
-      setTotalVotes(prev => prev + 1);
-      setUserVoted(id);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit vote');
+      }
       
-      // Save vote to localStorage
-      localStorage.setItem('userVoted', id.toString());
+      // Update eggs with the latest data from the server
+      if (data.allEggs && Array.isArray(data.allEggs)) {
+        setEggs(data.allEggs);
+        
+        // Calculate total votes
+        const total = data.allEggs.reduce((sum: number, egg: any) => sum + (egg.votes || 0), 0);
+        setTotalVotes(total);
+      }
+      
+      setUserVoted(Number(id));
+      
+      // Save vote to localStorage as a fallback
+      localStorage.setItem(`userVoted_${address}`, String(id));
       
       // Show success message
       showNotification('Your vote has been recorded! Thank you for voting.', 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting vote:", error);
-      showNotification('There was an error submitting your vote. Please try again.', 'error');
+      showNotification(error.message || 'There was an error submitting your vote. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  // Check if user already voted
+  // Fetch eggs on component mount
   useEffect(() => {
-    const savedVote = localStorage.getItem('userVoted');
-    if (savedVote) {
-      const voteId = parseInt(savedVote);
-      setUserVoted(voteId);
-      
-      // Update the vote count for this egg
-      setEggs(prevEggs => 
-        prevEggs.map(egg => 
-          egg.id === voteId 
-            ? { ...egg, votes: egg.votes + 1 } 
-            : egg
-        )
-      );
-      
-      setTotalVotes(1); // Since we only count the current user's vote
-      setIsLoggedIn(true); // If they voted before, they must be logged in
-    }
+    fetchEggs();
   }, []);
+  
+  // Check if user has already voted when address changes
+  useEffect(() => {
+    if (address) {
+      checkUserVote();
+    } else {
+      setUserVoted(null);
+    }
+  }, [address]);
   
   // Clean up notification timeout on unmount
   useEffect(() => {
@@ -182,21 +246,6 @@ export default function Home() {
           </div>
         )}
         
-        {/* Empty space where the title was */}
-        <div className="mb-8"></div>
-        
-        {/* Login Button */}
-        {!isLoggedIn && (
-          <div className="flex justify-center mb-8">
-            <button
-              onClick={handleLogin}
-              className="px-8 py-3 bg-white text-blue-600 font-medium rounded-full shadow-md hover:shadow-lg border border-blue-100 transform hover:-translate-y-1 transition-all duration-200"
-            >
-              Connect Wallet to Vote
-            </button>
-          </div>
-        )}
-        
         {/* Countdown Timer */}
         <div className="mb-12">
           <CountdownTimer targetTime={targetTime} />
@@ -217,6 +266,24 @@ export default function Home() {
                 {userVoted ? `Egg #${userVoted}` : "None"}
               </span>
             </div>
+            <div className="h-14 border-l border-gray-200"></div>
+            <div className="text-center">
+              <button 
+                onClick={fetchEggs}
+                disabled={isLoading}
+                className="px-4 py-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors duration-200 flex items-center"
+              >
+                <svg 
+                  className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {isLoading ? 'Refreshing...' : 'Refresh Votes'}
+              </button>
+            </div>
           </div>
         </div>
         
@@ -229,7 +296,7 @@ export default function Home() {
                 id={egg.id} 
                 votes={egg.votes} 
                 onVote={handleVote}
-                isLoggedIn={isLoggedIn}
+                isLoggedIn={isConnected}
                 rank={index < 3 && egg.votes > 0 ? index + 1 : undefined}
               />
             ))}
@@ -245,9 +312,10 @@ export default function Home() {
             <li className="text-lg">Each mystery egg contains a cute dog waiting to be discovered</li>
             <li className="text-lg">Connect your wallet to vote for your favorite egg</li>
             <li className="text-lg">You can only vote once per round</li>
-            <li className="text-lg">When the timer reaches zero, the winning egg hatches and the dog is tokenized</li>
+            <li className="text-lg">When the timer reaches zero, the winning egg hatches and the dog becomes a token on four.meme</li>
+            <li className="text-lg">Every voter who voted for the winning egg gets airdropped supply automatically</li>
             <li className="text-lg">A new voting round begins immediately with fresh eggs</li>
-            <li className="text-lg">This creates a sustainable ecosystem of cute dog NFTs</li>
+            <li className="text-lg">This creates a sustainable ecosystem of cute dog memecoins</li>
           </ol>
         </div>
       </div>
