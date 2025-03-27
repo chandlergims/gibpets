@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BNBark",
-  description: "Vote for your favorite egg to hatch into a dog memecoin on BNB Chain",
+  title: "GhibliPets",
+  description: "Vote for your favorite Ghibli egg to hatch into a Ghibli pet memecoin on BNB Chain",
   icons: {
     icon: '/logo.jpg',
     apple: '/logo.jpg',

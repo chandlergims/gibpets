@@ -36,8 +36,8 @@ const Navbar = () => {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center">
-              <span className="text-2xl font-bold text-yellow-600">BNBark</span>
-              <span className="ml-2 text-xl">🐕</span>
+              <span className="text-2xl font-bold text-yellow-600">GhibliPets</span>
+              <span className="ml-2 text-xl">🥚</span>
             </Link>
           </div>
           
@@ -45,7 +45,7 @@ const Navbar = () => {
           <div className="flex items-center space-x-4">
             {/* Twitter link */}
             <a 
-              href="https://x.com/BNBarkApp" 
+              href="https://x.com/GhibliPetsApp" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="px-4 py-2 rounded-md text-base font-bold text-gray-700 hover:bg-gray-100"

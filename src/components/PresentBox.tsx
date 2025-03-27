@@ -75,7 +75,7 @@ const PresentBox: React.FC<PresentBoxProps> = ({ id, votes, onVote, isLoggedIn, 
       <div className="p-5">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif" }}>
-            Mystery Egg #{id}
+            Ghibli Egg #{id}
           </h3>
           <div className={`flex items-center justify-center min-w-[60px] h-8 ${
             votes > 0 

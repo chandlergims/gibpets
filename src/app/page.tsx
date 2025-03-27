@@ -309,13 +309,13 @@ export default function Home() {
             🥚 How It Works
           </h2>
           <ol className="list-decimal pl-5 space-y-3 text-gray-600">
-            <li className="text-lg">Each mystery egg contains a cute dog waiting to be discovered</li>
+            <li className="text-lg">Each Ghibli egg contains a unique Ghibli pet waiting to be discovered</li>
             <li className="text-lg">Connect your wallet to vote for your favorite egg</li>
             <li className="text-lg">You can only vote once per round</li>
-            <li className="text-lg">When the timer reaches zero, the winning egg hatches and the dog becomes a token on four.meme</li>
+            <li className="text-lg">When the timer reaches zero, the winning egg hatches and the Ghibli pet becomes a token on four.meme</li>
             <li className="text-lg">Every voter who voted for the winning egg gets airdropped supply automatically</li>
             <li className="text-lg">A new voting round begins immediately with fresh eggs</li>
-            <li className="text-lg">This creates a sustainable ecosystem of cute dog memecoins</li>
+            <li className="text-lg">This creates a sustainable ecosystem of cute Ghibli pet memecoins</li>
           </ol>
         </div>
       </div>
